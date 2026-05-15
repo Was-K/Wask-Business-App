@@ -1,7 +1,17 @@
 @import "tailwindcss";
 
-* {
-  @apply transition-all duration-300;
+/* Smooth transitions for interactive elements only — 
+   applying to * breaks React DOM reconciliation */
+button,
+a,
+input,
+select,
+textarea,
+[class*="hover:"],
+[class*="transition"] {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
 }
 
 html {
@@ -9,7 +19,8 @@ html {
 }
 
 body {
-  @apply bg-black text-white;
+  background-color: #000;
+  color: #fff;
   margin: 0;
 }
 
