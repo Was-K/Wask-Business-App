@@ -35,7 +35,7 @@ const Proveedores: React.FC = () => {
   return (
     <AdminLayout
       title="Gestión de Proveedores"
-      subtitle="Administra relaciones con proveedores y catalogo de productos"
+      subtitle="Administra relaciones con proveedores y catálogo de productos"
     >
       <div className="space-y-6">
         <div className="flex justify-end">

@@ -11,6 +11,16 @@ import Productos from './pages/admin/Productos';
 import Reportes from './pages/admin/Reportes';
 import Configuracion from './pages/admin/Configuracion';
 
+// Business Pages
+import BusinessDashboard from './pages/business/BusinessDashboard';
+import BusinessInventario from './pages/business/BusinessInventario';
+import BusinessProductos from './pages/business/BusinessProductos';
+import BusinessPedidos from './pages/business/BusinessPedidos';
+import BusinessEntregas from './pages/business/BusinessEntregas';
+import BusinessVentas from './pages/business/BusinessVentas';
+import BusinessReportes from './pages/business/BusinessReportes';
+import BusinessConfiguracion from './pages/business/BusinessConfiguracion';
+
 import './App.css';
 
 function App() {
@@ -67,6 +77,72 @@ function App() {
             element={
               <ProtectedRoute requiredRole="ADMIN">
                 <Configuracion />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Business Routes - Protected */}
+          <Route
+            path="/business/dashboard"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/inventario"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessInventario />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/productos"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessProductos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/pedidos"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessPedidos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/entregas"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessEntregas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/ventas"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessVentas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/reportes"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessReportes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/configuracion"
+            element={
+              <ProtectedRoute requiredRole="business">
+                <BusinessConfiguracion />
               </ProtectedRoute>
             }
           />
