@@ -25,7 +25,7 @@ function App() {
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Dashboard />
               </ProtectedRoute>
             }
@@ -33,7 +33,7 @@ function App() {
           <Route
             path="/admin/solicitudes"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Solicitudes />
               </ProtectedRoute>
             }
@@ -41,7 +41,7 @@ function App() {
           <Route
             path="/admin/proveedores"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Proveedores />
               </ProtectedRoute>
             }
@@ -49,7 +49,7 @@ function App() {
           <Route
             path="/admin/productos"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Productos />
               </ProtectedRoute>
             }
@@ -57,7 +57,7 @@ function App() {
           <Route
             path="/admin/reportes"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Reportes />
               </ProtectedRoute>
             }
@@ -65,7 +65,7 @@ function App() {
           <Route
             path="/admin/configuracion"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredRole="ADMIN">
                 <Configuracion />
               </ProtectedRoute>
             }

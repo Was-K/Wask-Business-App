@@ -1,127 +1,93 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
-import { Download, Filter } from 'lucide-react';
+import { AsyncSection } from '../../components/AsyncSection';
+import { useApiResource } from '../../hooks/useApiResource';
+import { analyticsService } from '../../services/analyticsService';
+
+interface AnalyticsBundle {
+  summary: unknown;
+  orders: unknown;
+  inventory: unknown;
+}
+
+function renderJsonBlock(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
 
 const Reportes: React.FC = () => {
-  const reports = [
-    {
-      id: 1,
-      name: 'Reporte de Ventas Mensual',
-      date: '2024-05-01',
-      type: 'Ventas',
-      size: '2.4 MB',
-      status: 'Completado',
-    },
-    {
-      id: 2,
-      name: 'Análisis de Inventario',
-      date: '2024-05-05',
-      type: 'Inventario',
-      size: '1.8 MB',
-      status: 'Completado',
-    },
-    {
-      id: 3,
-      name: 'Reporte de Proveedores',
-      date: '2024-05-10',
-      type: 'Proveedores',
-      size: '3.2 MB',
-      status: 'Completado',
-    },
-    {
-      id: 4,
-      name: 'Análisis de Tendencias',
-      date: '2024-05-12',
-      type: 'Análisis',
-      size: '4.1 MB',
-      status: 'En Procesamiento',
-    },
-  ];
+  const fetcher = useCallback(async (): Promise<AnalyticsBundle> => {
+    const [summary, orders, inventory] = await Promise.allSettled([
+      analyticsService.getAnalyticsSummary(),
+      analyticsService.getOrderAnalytics(),
+      analyticsService.getInventoryAnalytics(),
+    ]);
+    const result: AnalyticsBundle = {
+      summary: summary.status === 'fulfilled' ? summary.value : null,
+      orders: orders.status === 'fulfilled' ? orders.value : null,
+      inventory: inventory.status === 'fulfilled' ? inventory.value : null,
+    };
+    if (!result.summary && !result.orders && !result.inventory) {
+      const reason =
+        summary.status === 'rejected' ? summary.reason :
+        orders.status === 'rejected' ? orders.reason :
+        inventory.status === 'rejected' ? inventory.reason : null;
+      throw reason instanceof Error ? reason : new Error('No se pudieron cargar las analíticas');
+    }
+    return result;
+  }, []);
+
+  const { data, loading, error, refetch } = useApiResource<AnalyticsBundle>(fetcher);
 
   return (
     <AdminLayout
       title="Reportes y Análisis"
-      subtitle="Visualiza y descarga reportes generados"
+      subtitle="Datos analíticos desde el backend"
     >
       <div className="space-y-6">
-        {/* Filters and Actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-white/60" />
-            <select className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50">
-              <option>Todos los Reportes</option>
-              <option>Ventas</option>
-              <option>Inventario</option>
-              <option>Proveedores</option>
-            </select>
-          </div>
-          <button className="px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-lg">
-            Generar Nuevo Reporte
+        <div className="flex items-center justify-end">
+          <button
+            onClick={refetch}
+            className="px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-lg"
+          >
+            Recargar Reportes
           </button>
         </div>
 
-        {/* Reports List */}
-        <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden">
-          <div className="divide-y divide-white/10">
-            {reports.map((report) => (
+        <AsyncSection
+          loading={loading}
+          error={error}
+          onRetry={refetch}
+          loadingMessage="Cargando reportes…"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[
+              { title: 'Resumen General', payload: data?.summary },
+              { title: 'Órdenes', payload: data?.orders },
+              { title: 'Inventario', payload: data?.inventory },
+            ].map((section) => (
               <div
-                key={report.id}
-                className="p-6 hover:bg-white/5 transition-colors duration-300 flex items-center justify-between group"
+                key={section.title}
+                className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6"
               >
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-white">{report.name}</h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                        report.status === 'Completado'
-                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                          : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                      }`}
-                    >
-                      {report.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-white/50">
-                    <span>{report.type}</span>
-                    <span>•</span>
-                    <span>{new Date(report.date).toLocaleDateString('es-ES')}</span>
-                    <span>•</span>
-                    <span>{report.size}</span>
-                  </div>
-                </div>
-
-                {report.status === 'Completado' && (
-                  <button className="ml-4 p-3 hover:bg-white/10 rounded-lg transition-all text-white/60 hover:text-white group-hover:scale-110 transition-transform">
-                    <Download className="w-5 h-5" />
-                  </button>
+                <h3 className="text-lg font-semibold text-white mb-4">{section.title}</h3>
+                {section.payload ? (
+                  <pre className="text-xs text-white/70 bg-black/50 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">
+                    {renderJsonBlock(section.payload)}
+                  </pre>
+                ) : (
+                  <p className="text-sm text-white/50">
+                    Datos no disponibles desde API todavía.
+                  </p>
                 )}
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Report Templates */}
-        <div>
-          <h2 className="text-xl font-bold text-white mb-4">Plantillas de Reportes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              'Reporte Diario',
-              'Reporte Semanal',
-              'Reporte Mensual',
-              'Reporte Personalizado',
-            ].map((template, idx) => (
-              <button
-                key={idx}
-                className="p-6 bg-black/40 border border-white/10 rounded-2xl hover:border-white/20 hover:bg-white/5 transition-all duration-300 text-center group"
-              >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
-                  {['📊', '📈', '📉', '⚙️'][idx]}
-                </div>
-                <p className="text-sm font-semibold text-white">{template}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+        </AsyncSection>
       </div>
     </AdminLayout>
   );

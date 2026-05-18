@@ -4,20 +4,48 @@ import {
   Mail,
   Lock,
   ArrowRight,
-  Briefcase,
   Shield,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { ApiError } from '../services/apiClient';
+import type { User, UserRole } from '../types/api';
 
 type AuthMode = 'login' | 'register';
-type UserRole = 'business' | 'admin' | null;
+
+function routeForRole(role: UserRole | undefined): string {
+  switch (role) {
+    case 'ADMIN':
+      return '/admin/dashboard';
+    case 'BUSINESS':
+      return '/business/dashboard';
+    case 'SUPPLIER':
+      // TODO: define supplier dashboard route once it exists in the app.
+      return '/admin/dashboard';
+    default:
+      // TODO: backend should always return a role; until then fall back to admin.
+      return '/admin/dashboard';
+  }
+}
+
+function translateAuthError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 0) return 'No se pudo contactar al servidor. Verifica tu conexión.';
+    if (err.status === 401) return 'Credenciales inválidas';
+    if (err.status === 403) return 'Tu usuario no está activo o no tiene permisos';
+    if (err.status >= 500) return 'El servidor no está disponible. Intenta de nuevo.';
+    return err.message || 'Error al iniciar sesión';
+  }
+  if (err instanceof Error) return err.message;
+  return 'Error al iniciar sesión';
+}
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>('login');
-  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,47 +54,43 @@ export const LoginPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedRole) {
-      alert('Please select a role');
+    setErrorMessage(null);
+
+    if (authMode === 'register' && formData.password !== formData.confirmPassword) {
+      setErrorMessage('Las contraseñas no coinciden');
       return;
     }
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      login(formData.email, selectedRole);
-      
-      // Navigate based on role
-      if (selectedRole === 'admin') {
-        navigate('/admin/dashboard');
+    try {
+      let userForRedirect: User | null = null;
+      if (authMode === 'login') {
+        userForRedirect = await login(formData.email, formData.password);
       } else {
-        navigate('/business/dashboard');
+        await register({ email: formData.email, password: formData.password });
+        // After registering, try logging in so we land on the right dashboard.
+        userForRedirect = await login(formData.email, formData.password);
       }
-    }, 1500);
+      navigate(routeForRole(userForRedirect?.role));
+    } catch (err) {
+      setErrorMessage(translateAuthError(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen overflow-hidden bg-black relative">
       {/* Ambient Gradient Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Top-left radial glow */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-white/5 rounded-full mix-blend-screen blur-3xl animate-float"></div>
-
-        {/* Top-right radial glow */}
         <div className="absolute -top-20 -right-40 w-80 h-80 bg-white/5 rounded-full mix-blend-screen blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-
-        {/* Bottom-left radial glow */}
         <div className="absolute -bottom-40 -left-20 w-96 h-96 bg-white/5 rounded-full mix-blend-screen blur-3xl animate-float" style={{ animationDelay: '4s' }}></div>
-
-        {/* Bottom-right radial glow */}
         <div className="absolute -bottom-20 -right-32 w-80 h-80 bg-white/5 rounded-full mix-blend-screen blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
 
@@ -93,7 +117,11 @@ export const LoginPage: React.FC = () => {
               {/* Authentication Mode Toggle */}
               <div className="flex gap-3 p-1 bg-gray-800/50 rounded-full border border-white/10 mb-8">
                 <button
-                  onClick={() => setAuthMode('login')}
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setErrorMessage(null);
+                  }}
                   className={`flex-1 py-2.5 px-4 rounded-full font-medium text-sm transition-all duration-300 ${
                     authMode === 'login'
                       ? 'bg-white text-black shadow-lg'
@@ -103,7 +131,11 @@ export const LoginPage: React.FC = () => {
                   Login
                 </button>
                 <button
-                  onClick={() => setAuthMode('register')}
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setErrorMessage(null);
+                  }}
                   className={`flex-1 py-2.5 px-4 rounded-full font-medium text-sm transition-all duration-300 ${
                     authMode === 'register'
                       ? 'bg-white text-black shadow-lg'
@@ -114,69 +146,13 @@ export const LoginPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Role Selection */}
-              <div className="mb-8">
-                <label className="block text-xs font-semibold tracking-widest text-white/70 uppercase mb-4">
-                  Select Your Role
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Business Role Card */}
-                  <button
-                    onClick={() => setSelectedRole('business')}
-                    className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
-                      selectedRole === 'business'
-                        ? 'border-white bg-white/10 shadow-lg shadow-white/20'
-                        : 'border-white/20 bg-gray-900/50 hover:border-white/30 hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-all duration-300 ${
-                        selectedRole === 'business'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-gray-700/50 text-white/50 group-hover:bg-gray-700'
-                      }`}>
-                        <Briefcase className="w-5 h-5" />
-                      </div>
-                      <p className={`text-sm font-semibold transition-colors duration-300 ${
-                        selectedRole === 'business'
-                          ? 'text-white'
-                          : 'text-white/70'
-                      }`}>
-                        Business
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Admin Role Card */}
-                  <button
-                    onClick={() => setSelectedRole('admin')}
-                    className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
-                      selectedRole === 'admin'
-                        ? 'border-white bg-white/10 shadow-lg shadow-white/20'
-                        : 'border-white/20 bg-gray-900/50 hover:border-white/30 hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-all duration-300 ${
-                        selectedRole === 'admin'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-gray-700/50 text-white/50 group-hover:bg-gray-700'
-                      }`}>
-                        <Shield className="w-5 h-5" />
-                      </div>
-                      <p className={`text-sm font-semibold transition-colors duration-300 ${
-                        selectedRole === 'admin'
-                          ? 'text-white'
-                          : 'text-white/70'
-                      }`}>
-                        Admin
-                      </p>
-                    </div>
-                  </button>
+              {/* Error Banner */}
+              {errorMessage && (
+                <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm">{errorMessage}</p>
                 </div>
-              </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,6 +162,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="email"
                     name="email"
+                    autoComplete="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="name@company.com"
@@ -200,6 +177,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="password"
                     name="password"
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="••••••••"
@@ -215,6 +193,7 @@ export const LoginPage: React.FC = () => {
                     <input
                       type="password"
                       name="confirmPassword"
+                      autoComplete="new-password"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       placeholder="Confirm password"
@@ -250,7 +229,11 @@ export const LoginPage: React.FC = () => {
                   <>
                     Don't have an account?{' '}
                     <button
-                      onClick={() => setAuthMode('register')}
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('register');
+                        setErrorMessage(null);
+                      }}
                       className="text-white hover:text-gray-200 font-semibold transition-colors duration-300"
                     >
                       Register here
@@ -260,7 +243,11 @@ export const LoginPage: React.FC = () => {
                   <>
                     Already have an account?{' '}
                     <button
-                      onClick={() => setAuthMode('login')}
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setErrorMessage(null);
+                      }}
                       className="text-white hover:text-gray-200 font-semibold transition-colors duration-300"
                     >
                       Sign in
