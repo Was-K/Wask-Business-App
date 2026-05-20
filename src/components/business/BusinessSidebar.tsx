@@ -55,7 +55,7 @@ export const BusinessSidebar: React.FC = () => {
             </div>
             <div>
               <p className="text-sm font-bold text-white tracking-wide">Wask</p>
-              <p className="text-xs text-blue-400/80">Proveedor</p>
+              <p className="text-xs text-blue-400/80">Negocio</p>
             </div>
           </div>
         )}

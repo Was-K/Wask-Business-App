@@ -1,29 +1,31 @@
 import { apiClient } from './apiClient';
-import type {
-  InventoryItem,
-  InventoryMovement,
-  Warehouse,
-} from '../types/api';
+import type { InventoryItem, StockMovementDto, Warehouse } from '../types/api';
 
 export interface CreateWarehouseDto {
   name: string;
-  location?: string;
-  [key: string]: unknown;
+  code: string;
+  address?: string;
+  region?: string;
 }
 
 export interface UpsertInventoryItemDto {
   productId: string;
   warehouseId: string;
-  quantity: number;
-  [key: string]: unknown;
+  availableStock: number;
+  minimumStock?: number;
 }
 
 export const inventoryService = {
+  getMyInventory: () => apiClient.get<InventoryItem[]>('/inventory/my-inventory'),
+
+  getLowStock: () => apiClient.get<InventoryItem[]>('/inventory/low-stock'),
+
   createWarehouse: (payload: CreateWarehouseDto) =>
     apiClient.post<Warehouse>('/inventory/warehouses', payload),
+
   upsertInventoryItem: (payload: UpsertInventoryItemDto) =>
     apiClient.post<InventoryItem>('/inventory/items', payload),
-  createMovement: (payload: InventoryMovement) =>
-    apiClient.post<InventoryMovement>('/inventory/movements', payload),
-  getLowStock: () => apiClient.get<InventoryItem[]>('/inventory/low-stock'),
+
+  createMovement: (payload: StockMovementDto) =>
+    apiClient.post<StockMovementDto>('/inventory/movements', payload),
 };

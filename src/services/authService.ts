@@ -12,31 +12,36 @@ export interface LoginPayload {
   password: string;
 }
 
-export interface RegisterPayload {
+export interface RegisterBusinessOwnerPayload {
+  firstName: string;
+  lastName: string;
   email: string;
+  phone?: string;
   password: string;
-  fullName?: string;
-  role?: UserRole;
-  [key: string]: unknown;
+  companyName: string;
+  businessIdentifier: string;
+  address?: string;
+  industry?: string;
 }
 
 export interface ChangePasswordPayload {
   currentPassword: string;
-  newPassword: string;
+  nextPassword: string;
 }
 
 interface JwtClaims {
   sub?: string;
   email?: string;
   role?: UserRole | string;
+  businessId?: string;
+  sessionId?: string;
   exp?: number;
   iat?: number;
 }
 
 /**
  * Decode a JWT without verifying the signature.
- * Used only as a temporary fallback to populate `user` when GET /users/me fails.
- * TODO: replace decoded-JWT usage with the real /users/me response once stable.
+ * Fallback only — prefer /users/me for authoritative user data.
  */
 export function decodeJwt(token: string): JwtClaims | null {
   try {
@@ -52,12 +57,19 @@ export function decodeJwt(token: string): JwtClaims | null {
 }
 
 function normalizeRole(role: unknown): UserRole {
-  if (typeof role !== 'string') return 'BUSINESS';
+  if (typeof role !== 'string') return 'CUSTOMER';
   const upper = role.toUpperCase();
-  if (upper === 'ADMIN' || upper === 'BUSINESS' || upper === 'SUPPLIER') {
-    return upper;
+  if (
+    upper === 'ADMIN' ||
+    upper === 'CUSTOMER' ||
+    upper === 'BUSINESS_OWNER' ||
+    upper === 'DELIVERY'
+  ) {
+    return upper as UserRole;
   }
-  return 'BUSINESS';
+  // Legacy aliases that the backend may still send during migration
+  if (upper === 'BUSINESS') return 'BUSINESS_OWNER';
+  return 'CUSTOMER';
 }
 
 async function login(email: string, password: string): Promise<AuthTokens> {
@@ -73,17 +85,16 @@ async function login(email: string, password: string): Promise<AuthTokens> {
   return tokens;
 }
 
-async function register(payload: RegisterPayload): Promise<AuthTokens | User> {
-  // Backend may return tokens (auto-login) or just the created user; let callers decide.
-  const data = await apiClient.post<AuthTokens | User>(
-    '/auth/register',
+async function registerBusinessOwner(
+  payload: RegisterBusinessOwnerPayload,
+): Promise<void> {
+  await apiClient.post<unknown>(
+    '/auth/register-business-owner',
     payload,
     { skipAuth: true },
   );
-  if (data && 'accessToken' in data && 'refreshToken' in data) {
-    setTokens(data as AuthTokens);
-  }
-  return data;
+  // The backend creates the user and business in a pending state.
+  // No tokens are issued — the account must be approved before login.
 }
 
 async function logout(): Promise<void> {
@@ -127,7 +138,6 @@ async function getCurrentUser(): Promise<User> {
     }
     throw new Error('respuesta de /users/me incompleta');
   } catch (err) {
-    // TODO: remove this JWT fallback once /users/me is stable on the backend.
     const token = getAccessToken();
     if (!token) throw err;
     const claims = decodeJwt(token);
@@ -136,6 +146,7 @@ async function getCurrentUser(): Promise<User> {
       id: claims.sub,
       email: claims.email,
       role: normalizeRole(claims.role),
+      businessId: claims.businessId ?? null,
     };
   }
 }
@@ -167,7 +178,7 @@ async function resetPassword(token: string, newPassword: string): Promise<void> 
 
 export const authService = {
   login,
-  register,
+  registerBusinessOwner,
   logout,
   logoutGlobal,
   refreshToken,

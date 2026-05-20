@@ -31,7 +31,7 @@ function formatNumber(n: number | null, prefix = ''): string {
 const MOCK_STATS: StatCard[] = [
   { icon: <Package className="w-6 h-6" />, label: 'Solicitudes Totales', value: '1,247', change: '+12.5%', changeType: 'up' },
   { icon: <AlertCircle className="w-6 h-6" />, label: 'Pendientes', value: '48', change: '-3.2%', changeType: 'down' },
-  { icon: <Users className="w-6 h-6" />, label: 'Proveedores', value: '89', change: '+5.1%', changeType: 'up' },
+  { icon: <Users className="w-6 h-6" />, label: 'Negocios', value: '89', change: '+5.1%', changeType: 'up' },
   { icon: <TrendingUp className="w-6 h-6" />, label: 'Ingresos (Este Mes)', value: '$45.2K', change: '+8.9%', changeType: 'up' },
 ];
 
@@ -56,8 +56,8 @@ function buildStats(
     },
     {
       icon: <Users className="w-6 h-6" />,
-      label: 'Proveedores',
-      value: formatNumber(pickNumber(summary?.totalSuppliers, overview?.totalSuppliers)),
+      label: 'Negocios',
+      value: formatNumber(pickNumber(overview?.totalBusinesses, overview?.totalUsers)),
       change: 'API',
       changeType: 'neutral',
     },

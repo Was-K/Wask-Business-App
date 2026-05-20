@@ -1,6 +1,7 @@
 /**
- * Shared API contract types.
- * The backend wraps every response in { success, data, timestamp } via a global interceptor.
+ * Shared API contract types for Wask Business App.
+ * Roles: ADMIN | CUSTOMER | BUSINESS_OWNER | DELIVERY
+ * CUSTOMER and DELIVERY are blocked at the frontend login; they use mobile/delivery apps.
  */
 
 export interface ApiResponse<T> {
@@ -25,9 +26,15 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
-export type UserRole = 'ADMIN' | 'BUSINESS' | 'SUPPLIER';
+export type UserRole = 'ADMIN' | 'CUSTOMER' | 'BUSINESS_OWNER' | 'DELIVERY';
+
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
+
+export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type OperationalStatus = 'ACTIVE' | 'PAUSED' | 'SUSPENDED';
 
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type ProductApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export type OrderStatus =
   | 'PENDING'
@@ -42,81 +49,103 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface User {
+export interface Business {
   id: string;
-  email: string;
-  role: UserRole;
-  fullName?: string;
-  isActive?: boolean;
-  emailVerified?: boolean;
+  companyName: string;
+  businessIdentifier: string;
+  fiscalData?: Record<string, unknown> | null;
+  address?: string | null;
+  phone?: string | null;
+  industry?: string | null;
+  logo?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  operationalStatus?: OperationalStatus;
+  verificationStatus?: VerificationStatus;
+  rejectionReason?: string | null;
+  users?: User[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface User {
+  id: string;
+  uuid?: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  avatar?: string;
+  businessId?: string | null;
+  status?: UserStatus;
+  isVerified?: boolean;
+  business?: Business | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Warehouse {
+  id: string;
+  name: string;
+  code?: string;
+  address?: string;
+  region?: string;
+  [key: string]: unknown;
+}
+
+export interface InventoryItem {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  availableStock: number;
+  reservedStock?: number;
+  minimumStock?: number;
+  product?: Product;
+  warehouse?: Warehouse;
+  [key: string]: unknown;
 }
 
 export interface Product {
   id: string;
   sku: string;
+  barcode?: string | null;
   name: string;
+  description?: string | null;
   category: string;
-  subcategory?: string;
-  description?: string;
-  barcode?: string;
-  supplierId: string;
-  price: number;
+  subcategory?: string | null;
+  images?: unknown;
+  businessId: string;
   minimumStock?: number;
+  maximumStock?: number | null;
+  price: number | string;
+  currency?: string;
   status: ProductStatus;
+  approvalStatus?: ProductApprovalStatus;
+  rejectionReason?: string | null;
+  approvedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  business?: Business;
+  inventory?: InventoryItem[];
 }
 
 export interface CreateProductDto {
   sku: string;
   name: string;
   category: string;
-  supplierId: string;
   price: number;
   description?: string;
   barcode?: string;
   subcategory?: string;
+  images?: unknown;
   minimumStock?: number;
+  maximumStock?: number;
   status?: ProductStatus;
+  businessId?: string;
 }
 
 export type UpdateProductDto = Partial<CreateProductDto>;
-
-export interface Supplier {
-  id: string;
-  supplierName: string;
-  businessIdentifier: string;
-  companyData?: Record<string, unknown>;
-  certifications?: Record<string, unknown>;
-  operationalRegions?: Record<string, unknown>;
-  verified?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateSupplierDto {
-  supplierName: string;
-  businessIdentifier: string;
-  companyData?: Record<string, unknown>;
-  certifications?: Record<string, unknown>;
-  operationalRegions?: Record<string, unknown>;
-}
-
-export type UpdateSupplierDto = Partial<CreateSupplierDto>;
-
-export interface Business {
-  id: string;
-  companyName: string;
-  businessIdentifier: string;
-  address?: string;
-  phone?: string;
-  industry?: string;
-  approved?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 export interface CreateBusinessDto {
   companyName: string;
@@ -137,21 +166,30 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderNumber?: string;
+  customerId: string;
   businessId: string;
-  supplierId: string;
+  deliveryUserId?: string | null;
   items: OrderItem[];
   status: OrderStatus;
+  subtotal?: number | string;
+  deliveryFee?: number | string;
+  taxTotal?: number | string;
+  grandTotal?: number | string;
+  currency?: string;
   notes?: string;
-  total?: number;
+  deliveryAddress?: string;
+  customer?: User;
+  business?: Business;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateOrderDto {
   businessId: string;
-  supplierId: string;
   items: Array<{ productId: string; quantity: number }>;
   notes?: string;
+  deliveryAddress?: string;
 }
 
 export interface UpdateOrderStatusDto {
@@ -162,41 +200,29 @@ export interface UpdateOrderStatusDto {
 export interface DashboardSummary {
   totalOrders?: number;
   pendingOrders?: number;
-  totalSuppliers?: number;
   totalProducts?: number;
+  lowStockItems?: number;
   totalRevenue?: number;
+  productsPendingApproval?: number;
+  averageTicket?: number;
   [key: string]: unknown;
 }
 
 export interface AdminOverview {
   totalUsers?: number;
+  totalCustomers?: number;
   totalBusinesses?: number;
-  totalSuppliers?: number;
-  pendingApprovals?: number;
+  pendingBusinesses?: number;
+  pendingProducts?: number;
+  totalOrders?: number;
+  totalRevenue?: number;
   [key: string]: unknown;
 }
 
-export interface Warehouse {
-  id: string;
-  name: string;
-  location?: string;
-  [key: string]: unknown;
-}
-
-export interface InventoryItem {
-  id: string;
-  productId: string;
-  warehouseId: string;
+export interface StockMovementDto {
+  inventoryItemId: string;
+  type: 'INBOUND' | 'OUTBOUND' | 'ADJUSTMENT' | 'RESERVATION' | 'RELEASE';
   quantity: number;
-  [key: string]: unknown;
-}
-
-export interface InventoryMovement {
-  id?: string;
-  warehouseId: string;
-  productId: string;
-  quantity: number;
-  type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
   reason?: string;
 }
 
@@ -212,3 +238,36 @@ export interface Notification {
 export interface AppSettings {
   [key: string]: unknown;
 }
+
+// ---------------------------------------------------------------------------
+// Deprecated — kept temporarily to avoid breaking imports that haven't been
+// migrated yet. Do not use in new code. Use Business instead.
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use Business instead */
+export interface Supplier {
+  id: string;
+  supplierName: string;
+  businessIdentifier: string;
+  companyData?: Record<string, unknown>;
+  certifications?: Record<string, unknown>;
+  operationalRegions?: Record<string, unknown>;
+  verified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** @deprecated Use CreateBusinessDto instead */
+export interface CreateSupplierDto {
+  supplierName: string;
+  businessIdentifier: string;
+  companyData?: Record<string, unknown>;
+  certifications?: Record<string, unknown>;
+  operationalRegions?: Record<string, unknown>;
+}
+
+/** @deprecated */
+export type UpdateSupplierDto = Partial<CreateSupplierDto>;
+
+// Legacy alias kept to avoid breaking builds; prefer VerificationStatus.
+export type InventoryMovement = StockMovementDto & { id?: string; warehouseId?: string; productId?: string };

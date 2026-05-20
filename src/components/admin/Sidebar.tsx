@@ -22,7 +22,7 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
     { icon: ClipboardList, label: 'Solicitudes', path: '/admin/solicitudes' },
-    { icon: ShoppingCart, label: 'Proveedores', path: '/admin/proveedores' },
+    { icon: ShoppingCart, label: 'Negocios', path: '/admin/proveedores' },
     { icon: Package, label: 'Productos', path: '/admin/productos' },
     { icon: BarChart3, label: 'Reportes', path: '/admin/reportes' },
     { icon: Settings, label: 'Configuración', path: '/admin/configuracion' },

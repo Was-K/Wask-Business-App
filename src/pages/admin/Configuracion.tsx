@@ -66,7 +66,7 @@ const Configuracion: React.FC = () => {
     try {
       await authService.changePassword({
         currentPassword: passwordForm.current,
-        newPassword: passwordForm.next,
+        nextPassword: passwordForm.next,
       });
       setPasswordFeedback({ type: 'success', text: 'Contraseña actualizada correctamente' });
       setPasswordForm({ current: '', next: '', confirm: '' });

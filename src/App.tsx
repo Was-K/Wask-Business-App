@@ -31,7 +31,7 @@ function App() {
           {/* Public Route */}
           <Route path="/" element={<LoginPage />} />
 
-          {/* Admin Routes - Protected */}
+          {/* Admin Routes */}
           <Route
             path="/admin/dashboard"
             element={
@@ -81,11 +81,11 @@ function App() {
             }
           />
 
-          {/* Business Routes - Protected */}
+          {/* Business Routes */}
           <Route
             path="/business/dashboard"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessDashboard />
               </ProtectedRoute>
             }
@@ -93,7 +93,7 @@ function App() {
           <Route
             path="/business/inventario"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessInventario />
               </ProtectedRoute>
             }
@@ -101,7 +101,7 @@ function App() {
           <Route
             path="/business/productos"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessProductos />
               </ProtectedRoute>
             }
@@ -109,7 +109,7 @@ function App() {
           <Route
             path="/business/pedidos"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessPedidos />
               </ProtectedRoute>
             }
@@ -117,7 +117,7 @@ function App() {
           <Route
             path="/business/entregas"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessEntregas />
               </ProtectedRoute>
             }
@@ -125,7 +125,7 @@ function App() {
           <Route
             path="/business/ventas"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessVentas />
               </ProtectedRoute>
             }
@@ -133,7 +133,7 @@ function App() {
           <Route
             path="/business/reportes"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessReportes />
               </ProtectedRoute>
             }
@@ -141,13 +141,13 @@ function App() {
           <Route
             path="/business/configuracion"
             element={
-              <ProtectedRoute requiredRole="business">
+              <ProtectedRoute requiredRole="BUSINESS_OWNER">
                 <BusinessConfiguracion />
               </ProtectedRoute>
             }
           />
 
-          {/* Catch all - redirect to login */}
+          {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

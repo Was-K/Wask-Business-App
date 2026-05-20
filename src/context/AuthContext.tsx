@@ -1,6 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { authService, type RegisterPayload } from '../services/authService';
+import {
+  authService,
+  type RegisterBusinessOwnerPayload,
+} from '../services/authService';
 import { clearTokens, getAccessToken } from '../services/tokenStorage';
 import type { User, UserRole } from '../types/api';
 
@@ -12,13 +15,43 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<User>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterBusinessOwnerPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   loadCurrentUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function buildLoginError(user: User): string | null {
+  const role = user.role;
+
+  if (role === 'CUSTOMER') {
+    return 'Esta cuenta pertenece a la app móvil de clientes. Descarga la app Wask para continuar.';
+  }
+  if (role === 'DELIVERY') {
+    return 'Esta cuenta pertenece al módulo de delivery. Usa la app de repartidores.';
+  }
+  if (role === 'BUSINESS_OWNER') {
+    if (user.status === 'PENDING') {
+      return 'Tu negocio está pendiente de aprobación por el administrador.';
+    }
+    if (user.status === 'SUSPENDED' || user.status === 'DISABLED') {
+      return 'Tu cuenta está suspendida o deshabilitada. Contacta al soporte.';
+    }
+    const vs = user.business?.verificationStatus;
+    if (vs === 'PENDING') {
+      return 'Tu solicitud de negocio aún está en revisión. Te notificaremos cuando sea aprobada.';
+    }
+    if (vs === 'REJECTED') {
+      const reason = user.business?.rejectionReason;
+      return reason
+        ? `Tu solicitud fue rechazada: ${reason}`
+        : 'Tu solicitud de negocio fue rechazada. Contacta al administrador.';
+    }
+  }
+  return null;
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -41,8 +74,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return !!tokens;
   }, []);
 
-  // Bootstrap: if we have an access token, try to load /users/me.
-  // If that fails, attempt one refresh then retry; finally bail out cleanly.
   useEffect(() => {
     let cancelled = false;
     async function bootstrap() {
@@ -80,7 +111,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await authService.login(email, password);
       const me = await loadCurrentUser();
-      return me!;
+      if (!me) throw new Error('No se pudo cargar la sesión');
+
+      const blockMessage = buildLoginError(me);
+      if (blockMessage) {
+        clearTokens();
+        setUser(null);
+        throw new Error(blockMessage);
+      }
+
+      // Only ADMIN and BUSINESS_OWNER with VERIFIED business may enter.
+      if (me.role !== 'ADMIN' && me.role !== 'BUSINESS_OWNER') {
+        clearTokens();
+        setUser(null);
+        throw new Error('No tienes permisos para acceder a este portal.');
+      }
+
+      return me;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
       setError(message);
@@ -90,15 +137,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [loadCurrentUser]);
 
-  const register = useCallback(async (payload: RegisterPayload): Promise<void> => {
+  // register creates a pending BUSINESS_OWNER account.
+  // No tokens are issued — user must wait for admin approval before logging in.
+  const register = useCallback(async (payload: RegisterBusinessOwnerPayload): Promise<void> => {
     setError(null);
     setIsLoading(true);
     try {
-      const result = await authService.register(payload);
-      // If the backend issued tokens on register, load the user automatically.
-      if (result && typeof result === 'object' && 'accessToken' in result) {
-        await loadCurrentUser();
-      }
+      await authService.registerBusinessOwner(payload);
+      // Intentionally do NOT set user or tokens here.
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al registrarse';
       setError(message);
@@ -106,7 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [loadCurrentUser]);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
