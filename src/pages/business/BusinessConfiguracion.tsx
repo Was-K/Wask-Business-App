@@ -5,10 +5,12 @@ import { businessService } from '../../services/businessService';
 import { authService, type ChangePasswordPayload } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { AsyncSection } from '../../components/AsyncSection';
-import { User, Bell, Shield, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Bell, Shield, Save, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 const BusinessConfiguracion: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const fetcher = useCallback(() => businessService.getMyBusiness(), []);
   const { data: business, loading, error, refetch } = useApiResource(fetcher);
@@ -32,6 +34,9 @@ const BusinessConfiguracion: React.FC = () => {
   const [bizMsg, setBizMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Seed form when data arrives
   useEffect(() => {
@@ -94,8 +99,63 @@ const BusinessConfiguracion: React.FC = () => {
     }
   };
 
+  const handleDeleteBusiness = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await businessService.deleteMyBusiness();
+      await logout();
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Error al eliminar el negocio');
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <BusinessLayout title="Configuración" subtitle="Administra tu perfil y preferencias">
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f0f0f] border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Eliminar negocio</h3>
+                <p className="text-white/50 text-sm">{business?.companyName}</p>
+              </div>
+            </div>
+            <p className="text-white/70 text-sm mb-2">
+              Tu negocio y cuenta serán desactivados de inmediato. Todos tus productos dejarán de ser visibles.
+            </p>
+            <p className="text-white/50 text-xs mb-6">
+              Si deseas volver en el futuro, podrás re-registrarte con el mismo email o RUC y tu solicitud pasará nuevamente por aprobación.
+            </p>
+            {deleteError && (
+              <p className="text-red-400 text-sm mb-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {deleteError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteError(null); }}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteBusiness}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 bg-red-500/80 hover:bg-red-500 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-50"
+              >
+                {deleteLoading ? 'Eliminando…' : 'Sí, eliminar mi negocio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="space-y-6 max-w-3xl">
         <AsyncSection
           loading={loading}
@@ -298,6 +358,33 @@ const BusinessConfiguracion: React.FC = () => {
               </div>
             </div>
           </form>
+          {/* Danger zone */}
+          <div className="bg-red-950/20 border border-red-500/20 rounded-2xl overflow-hidden mt-6">
+            <div className="px-6 py-4 border-b border-red-500/10 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-red-500/12 border border-red-500/20 flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-red-300">Zona de peligro</h3>
+                <p className="text-xs text-red-400/60">Acciones irreversibles</p>
+              </div>
+            </div>
+            <div className="p-6 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-white/80">Eliminar mi negocio</p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  Desactiva tu negocio y cuenta. Puedes volver a registrarte en el futuro.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 rounded-xl font-medium text-sm transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                Eliminar negocio
+              </button>
+            </div>
+          </div>
         </AsyncSection>
       </div>
     </BusinessLayout>

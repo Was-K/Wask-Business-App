@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { AsyncSection } from '../../components/AsyncSection';
-import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useApiResource } from '../../hooks/useApiResource';
 import { productsService } from '../../services/productsService';
 import { ENABLE_MOCKS } from '../../services/env';
@@ -65,6 +65,7 @@ const Productos: React.FC = () => {
   const [filter, setFilter] = useState<ProductApprovalStatus | 'ALL'>('PENDING');
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetcher = useCallback(
@@ -104,12 +105,58 @@ const Productos: React.FC = () => {
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      await productsService.deleteProduct(deleteTarget.id);
+      setDeleteTarget(null);
+      refetch();
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <AdminLayout
       title="Productos por Aprobar"
       subtitle="Revisa y gestiona los productos enviados por los negocios"
     >
       <div className="space-y-6">
+        {/* Delete modal */}
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/20 rounded-2xl p-8 w-full max-w-md mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <Trash2 className="w-6 h-6 text-red-400" />
+                <h3 className="text-lg font-semibold text-white">Eliminar producto</h3>
+              </div>
+              <p className="text-sm text-white/60 mb-2">
+                ¿Eliminar <span className="text-white font-medium">{deleteTarget.name}</span>?
+              </p>
+              <p className="text-xs text-white/40 mb-6">
+                Esta acción es reversible desde la base de datos, pero el producto dejará de ser visible de inmediato.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={actionLoading}
+                  className="flex-1 py-2.5 rounded-xl border border-white/20 text-white/70 hover:text-white transition-all text-sm disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={actionLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-white transition-all text-sm font-semibold disabled:opacity-50"
+                >
+                  {actionLoading ? 'Eliminando…' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Reject modal */}
         {rejectTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -230,6 +277,14 @@ const Productos: React.FC = () => {
                               Rechazar
                             </button>
                           )}
+                          <button
+                            onClick={() => setDeleteTarget(product)}
+                            disabled={actionLoading}
+                            className="px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-300 rounded-lg text-xs font-semibold flex items-center gap-1 border border-red-700/30 transition-all disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Eliminar
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -41,4 +41,7 @@ export const productsService = {
 
   archiveProduct: (id: string) =>
     apiClient.post<Product>(`/products/${id}/archive`, {}),
+
+  deleteProduct: (id: string) =>
+    apiClient.delete<{ deleted: boolean }>(`/products/${id}`),
 };
