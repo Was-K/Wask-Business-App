@@ -16,7 +16,8 @@ interface Delivery {
 
 const BusinessEntregas: React.FC = () => {
   const fetcher = useCallback(() => Promise.resolve([] as Delivery[]), []);
-  const { data: deliveries = [], loading, error, refetch } = useApiResource<Delivery[]>(fetcher);
+  const { data, loading, error, refetch } = useApiResource<Delivery[]>(fetcher);
+  const deliveries = data ?? [];
 
   const statusConfig: Record<string, string> = {
     'Preparando': 'bg-amber-500/15 text-amber-400 border-amber-500/25',
